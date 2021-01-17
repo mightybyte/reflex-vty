@@ -596,12 +596,13 @@ roundedBoxStyle :: BoxStyle
 roundedBoxStyle = BoxStyle '╭' '─' '╮' '│' '╯' '─' '╰' '│'
 
 -- | Draws a titled box in the provided style and a child widget inside of that box
-boxTitle :: (Monad m, Reflex t, MonadNodeId m)
-    => Behavior t BoxStyle
-    -> Text
+boxCustom :: (Monad m, Reflex t, MonadNodeId m)
+    => (BoxStyle -> Region -> Image)
+    -> (BoxStyle -> Region -> Image)
+    -> Behavior t BoxStyle
     -> VtyWidget t m a
     -> VtyWidget t m a
-boxTitle boxStyle title child = do
+boxCustom header footer boxStyle child = do
   dh <- displayHeight
   dw <- displayWidth
   let boxReg = DynRegion (pure 0) (pure 0) dw dh
@@ -611,17 +612,14 @@ boxTitle boxStyle title child = do
   pane innerReg (pure True) child
   where
     boxImages :: BoxStyle -> Region -> [Image]
-    boxImages style (Region left top width height) =
+    boxImages style r@(Region left top width height) =
       let right = left + width - 1
           bottom = top + height - 1
           sides =
-            [ withinImage (Region (left + 1) top (width - 2) 1) $
-                V.text' V.defAttr $
-                  hPadText title (_boxStyle_n style) (width - 2)
+            [ header style r
             , withinImage (Region right (top + 1) 1 (height - 2)) $
                 V.charFill V.defAttr (_boxStyle_e style) 1 (height - 2)
-            , withinImage (Region (left + 1) bottom (width - 2) 1) $
-                V.charFill V.defAttr (_boxStyle_s style) (width - 2) 1
+            , footer style r
             , withinImage (Region left (top + 1) 1 (height - 2)) $
                 V.charFill V.defAttr (_boxStyle_w style) 1 (height - 2)
             ]
@@ -636,16 +634,37 @@ boxTitle boxStyle title child = do
                 V.char V.defAttr (_boxStyle_sw style)
             ]
       in sides ++ if width > 1 && height > 1 then corners else []
-    hPadText :: T.Text -> Char -> Int -> T.Text
-    hPadText t c l = if lt >= l
-                     then t
-                     else left <> t <> right
-      where
-        lt = T.length t
-        delta = l - lt
-        mkHalf n = T.replicate (n `div` 2) (T.singleton c)
-        left = mkHalf $ delta + 1
-        right = mkHalf delta
+
+-- | Draws a titled box in the provided style and a child widget inside of that box
+boxTitle :: (Monad m, Reflex t, MonadNodeId m)
+    => Behavior t BoxStyle
+    -> Text
+    -> VtyWidget t m a
+    -> VtyWidget t m a
+boxTitle boxStyle title child = do
+  boxCustom header footer boxStyle child
+  where
+    header style (Region left top width _) =
+      withinImage (Region (left + 1) top (width - 2) 1) $
+        V.text' V.defAttr $
+        centerText title (_boxStyle_n style) (width - 2)
+    footer style (Region left top width height) =
+      let bottom = top + height - 1
+      in withinImage (Region (left + 1) bottom (width - 2) 1) $
+        V.charFill V.defAttr (_boxStyle_s style) (width - 2) 1
+
+-- | Centers the given text on a line the rest of which filled with a single
+-- character to make the specified line length.
+centerText :: T.Text -> Char -> Int -> T.Text
+centerText t c l = if lt >= l
+                 then t
+                 else left <> t <> right
+  where
+    lt = T.length t
+    delta = l - lt
+    mkHalf n = T.replicate (n `div` 2) (T.singleton c)
+    left = mkHalf $ delta + 1
+    right = mkHalf delta
 
 -- | A box without a title
 box :: (Monad m, Reflex t, MonadNodeId m)
