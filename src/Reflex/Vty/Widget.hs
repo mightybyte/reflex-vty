@@ -25,6 +25,7 @@ module Reflex.Vty.Widget
   , runVtyWidget
   , mainWidget
   , mainWidgetWithHandle
+--  , mainWidgetWithHandle'
   , HasDisplaySize(..)
   , HasFocus(..)
   , HasVtyInput(..)
@@ -33,6 +34,7 @@ module Reflex.Vty.Widget
   , Region(..)
   , regionSize
   , regionBlankImage
+  , withinImage
   , Drag(..)
   , drag
   , MouseDown(..)
@@ -45,6 +47,7 @@ module Reflex.Vty.Widget
   , splitV
   , splitH
   , splitVDrag
+  , centerText
   , boxTitle
   , box
   , boxStatic
@@ -153,6 +156,34 @@ runVtyWidget
   -> VtyWidget t m a
   -> m (a, Behavior t [Image])
 runVtyWidget ctx w = runReaderT (runBehaviorWriterT (unVtyWidget w)) ctx
+
+-- | Sets up the top-level context for a 'VtyWidget' and runs it with that context
+--mainWidgetWithHandle'
+--  :: (MonadVtyApp t m, MonadNodeId m)
+--  => V.Vty
+--  -> VtyWidget t m (Event t ())
+--  -> IO ()
+--mainWidgetWithHandle' vty child =
+--  runVtyAppWithHandle vty $ \dr0 inp -> do
+--    size <- holdDyn dr0 $ fforMaybe inp $ \case
+--      V.EvResize w h -> Just (w, h)
+--      _ -> Nothing
+--    let inp' = fforMaybe inp $ \case
+--          V.EvResize {} -> Nothing
+--          x -> Just x
+--    let ctx = VtyWidgetCtx
+--          { _vtyWidgetCtx_width = fmap fst size
+--          , _vtyWidgetCtx_height = fmap snd size
+--          , _vtyWidgetCtx_input = inp'
+--          , _vtyWidgetCtx_focus = constDyn True
+--          }
+--    (shutdown, images) <- runNodeIdT $ runVtyWidget ctx $ do
+--      tellImages . ffor (current size) $ \(w, h) -> [V.charFill V.defAttr ' ' w h]
+--      child
+--    return $ VtyResult
+--      { _vtyResult_picture = fmap (V.picForLayers . reverse) images
+--      , _vtyResult_shutdown = shutdown
+--      }
 
 -- | Sets up the top-level context for a 'VtyWidget' and runs it with that context
 mainWidgetWithHandle
